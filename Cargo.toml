@@ -1,0 +1,11 @@
+[package]
+name = "acpc-server"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+# members = ["acpc-server-sys"]
+
+[dependencies]
+acpc-server-sys = { path = "acpc-server-sys" }
+libc = "0.2.111"
