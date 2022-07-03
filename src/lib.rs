@@ -314,20 +314,19 @@ impl State {
 	Ok(&self.state_.holeCards[self.game.player_idx(player)?][..length])
     }
 
-    pub fn set_board_cards(&mut self, cards: &[Card]) -> Result<(), String> {
+    pub fn set_board_cards(&mut self, cards: &[Card]) {
 	assert!(self.game.sum_board_cards(self.get_round()) as usize == cards.len());
 	let mut fixed_size_cards: [Card; 7] = [0; 7];
 	for (i, v) in cards.into_iter().enumerate() {
 	    fixed_size_cards[i] = *v;
 	}
 	self.state_.boardCards = fixed_size_cards;
-	Ok(())
     }
 
     #[inline]
-    pub fn board_cards(&self) -> Result<&[Card], String> {
+    pub fn board_cards(&self) -> &[Card] {
 	let length = self.game.sum_board_cards(self.get_round()) as usize;
-	Ok(&self.state_.boardCards[..length])
+	&self.state_.boardCards[..length]
     }
 
     #[inline]
@@ -580,8 +579,8 @@ mod state_tests {
 	for (i, cards) in hole_cards.iter().enumerate() {
 	    assert_eq!(Ok(&cards[..]), state.hole_cards(i as u8));
 	}
-	state.set_board_cards(&board).unwrap();
-	assert_eq!(Ok(&board[..]), state.board_cards());
+	state.set_board_cards(&board);
+	assert_eq!(&board[..], state.board_cards());
 	// println!("{}", state);
 	assert_eq!(Ok(-100.0), state.value_of_state(0)); // lose
 	assert_eq!(Ok(50.0), state.value_of_state(1)); // tie
