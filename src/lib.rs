@@ -256,6 +256,30 @@ impl State {
     }
 
     #[inline]
+    pub fn num_called(&self) -> u8 {
+	let state_ptr = &self.state_ as *const acpc::State;
+	let game_ptr = &self.game.game_ as *const acpc::Game;
+	unsafe {
+	    acpc::numCalled(game_ptr, state_ptr)
+	}
+    }
+
+    #[inline]
+    pub fn num_acting_player(&self) -> u8 {
+	let state_ptr = &self.state_ as *const acpc::State;
+	let game_ptr = &self.game.game_ as *const acpc::Game;
+	unsafe {
+	    acpc::numActingPlayers(game_ptr, state_ptr)
+	}
+    }
+
+    #[inline]
+    pub fn num_actions(&self) -> u8 {
+	let round = self.get_round();
+	self.state_.numActions[round as usize]
+    }
+
+    #[inline]
     pub fn is_finished(&self) -> bool {
 	match self.state_.finished {
 	    0 => false,
@@ -304,7 +328,7 @@ impl State {
     pub fn board_cards(&self) -> Result<&[Card], String> {
 	let length = self.game.sum_board_cards(self.get_round()) as usize;
 	Ok(&self.state_.boardCards[..length])
-    }    
+    }
 
     #[inline]
     pub fn get_round(&self) -> u8 {
@@ -450,8 +474,10 @@ mod state_tests {
     fn num_folded() {
 	let mut state = get_state();
 	assert_eq!(0, state.num_folded());
+	assert_eq!(3, state.num_acting_player());
 	state.do_action(Action::Fold).unwrap();
 	assert_eq!(1, state.num_folded());
+	assert_eq!(2, state.num_acting_player());
     }
 
     #[test]
@@ -502,6 +528,44 @@ mod state_tests {
 	assert_eq!(Ok(1000), state.ante(2));
 
 	assert_eq!(4000, state.total_spent());
+    }
+
+    #[test]
+    fn num_called() {
+	let mut state = get_state();
+	assert_eq!(0, state.num_actions());
+		   
+	assert_eq!(2, state.current_player());
+	state.do_action(Action::Call).unwrap(); // 2
+	assert_eq!(1, state.num_called());
+	assert_eq!(1, state.num_actions());
+
+	assert_eq!(0, state.current_player());
+	state.do_action(Action::Raise(200)).unwrap(); // 0
+	assert_eq!(2, state.num_actions());
+
+	assert_eq!(1, state.current_player());
+	state.do_action(Action::Raise(1000)).unwrap(); // 1
+	assert_eq!(3, state.num_actions());
+
+	assert_eq!(2, state.current_player());
+	state.do_action(Action::Call).unwrap(); // 2
+	assert_eq!(2, state.num_called());
+	assert_eq!(4, state.num_actions());
+
+	assert_eq!(0, state.current_player());
+	state.do_action(Action::Raise(2000)).unwrap(); // 0
+	assert_eq!(5, state.num_actions());
+
+	assert_eq!(1, state.current_player());
+	state.do_action(Action::Call).unwrap(); // 1
+	assert_eq!(2, state.num_called());
+	assert_eq!(6, state.num_actions());
+
+	assert_eq!(2, state.current_player());
+	state.do_action(Action::Fold).unwrap(); // 2
+	assert_eq!(0, state.num_called());
+	assert_eq!(0, state.num_actions());
     }
 
     #[test]
