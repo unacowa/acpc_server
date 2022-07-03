@@ -149,8 +149,14 @@ impl State {
     }
 
     #[inline]
-    pub fn spent(&self, player: u8) -> Result<i32, String> {
+    pub fn spent_of(&self, player: u8) -> Result<i32, String> {
 	Ok(self.state_.spent[self.game.player_idx(player)?])
+    }
+
+    #[inline]
+    pub fn spents(&self) -> &[i32] {
+	let n = self.game.number_of_players() as usize;
+	&self.state_.spent[..n]
     }
 
     #[inline]
@@ -249,12 +255,12 @@ impl State {
 
     #[inline]
     pub fn money(&self, player: u8) -> Result<i32, String> {
-	Ok(self.game.stack_size(player)? - self.spent(player)?)
+	Ok(self.game.stack_size(player)? - self.spent_of(player)?)
     }
 
     #[inline]
     pub fn ante(&self, player: u8) -> Result<i32, String> {
-	Ok(self.spent(player)?)
+	Ok(self.spent_of(player)?)
     }
     
     #[inline]
@@ -264,8 +270,8 @@ impl State {
     }
 
     #[inline]
-    pub fn current_spent(&self, player: u8) -> Result<i32, String> {
-	Ok(self.spent(player)?)
+    pub fn current_spent(&self) -> i32 {
+	self.state_.spent[self.current_player() as usize]
     }
 
     pub fn set_hole_cards(&mut self, player: u8, cards: &[Card]) -> Result<(), String> {
@@ -425,27 +431,19 @@ mod state_tests {
     #[test]
     fn raise_size() {
 	let mut state = get_state();
-	assert_eq!(Ok(50), state.current_spent(0));
-	assert_eq!(Ok(100), state.current_spent(1));
-	assert_eq!(Ok(0), state.current_spent(2));
+	assert_eq!(&[50, 100, 0], state.spents());
 
 	assert_eq!(Ok((200, 20000)), state.raise_size());
 	state.do_action(Action::Raise(200)).unwrap();
-	assert_eq!(Ok(50), state.current_spent(0));
-	assert_eq!(Ok(100), state.current_spent(1));
-	assert_eq!(Ok(200), state.current_spent(2));
+	assert_eq!(&[50, 100, 200], state.spents());
 
 	assert_eq!(Ok((300, 20000)), state.raise_size());
 	state.do_action(Action::Raise(1000)).unwrap();
-	assert_eq!(Ok(1000), state.current_spent(0));
-	assert_eq!(Ok(100), state.current_spent(1));
-	assert_eq!(Ok(200), state.current_spent(2));
+	assert_eq!(&[1000, 100, 200], state.spents());
 	
 	assert_eq!(Ok((1800, 20000)), state.raise_size());
 	state.do_action(Action::Raise(20000)).unwrap();
-	assert_eq!(Ok(1000), state.current_spent(0));
-	assert_eq!(Ok(20000), state.current_spent(1));
-	assert_eq!(Ok(200), state.current_spent(2));
+	assert_eq!(&[1000, 20000, 200], state.spents());
     }
 
     #[test]
@@ -470,13 +468,6 @@ mod state_tests {
 
     #[test]
     fn is_valid_action() {
-	let a_fold = Action::Fold;
-	let a_call = Action::Call;
-	let a_raise_100 = Action::Raise(100);
-	let a_raise_1000 = Action::Raise(1000);
-	let a_raise_10000 = Action::Raise(10000);
-	let a_raise_20001 = Action::Raise(20001);
-
 	let mut state = get_state();
 	assert_eq!(true, state.is_valid_action(Action::Fold));
 	assert_eq!(true, state.is_valid_action(Action::Call));
