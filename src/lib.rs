@@ -165,6 +165,26 @@ impl State {
     }
 
     #[inline]
+    pub fn total_spent(&self) -> i32 {
+	let n = self.game.number_of_players() as usize;
+	self.state_.spent.iter().take(n).fold(0, |sum, i| sum + *i)
+    }
+
+    #[inline]
+    pub fn current_player(&self) -> u8 {
+	let state_ptr = &self.state_ as *const acpc::State;
+	let game_ptr = &self.game.game_ as *const acpc::Game;
+	unsafe {
+	    acpc::currentPlayer(game_ptr, state_ptr)
+	}
+    }
+
+    #[inline]
+    pub fn current_spent(&self) -> i32 {
+	self.state_.spent[self.current_player() as usize]
+    }
+    
+    #[inline]
     pub fn value_of_state(&self, player: u8) -> Result<f64, String> {
 	if !self.is_finished() {
 	    return Err("Game is not finished".to_owned());
@@ -201,15 +221,6 @@ impl State {
 	let game_ptr = &self.game.game_ as *const acpc::Game;
 	unsafe {
 	    acpc::numFolded(game_ptr, state_ptr)
-	}
-    }
-
-    #[inline]
-    pub fn current_player(&self) -> u8 {
-	let state_ptr = &self.state_ as *const acpc::State;
-	let game_ptr = &self.game.game_ as *const acpc::Game;
-	unsafe {
-	    acpc::currentPlayer(game_ptr, state_ptr)
 	}
     }
 
@@ -263,17 +274,6 @@ impl State {
 	Ok(self.spent_of(player)?)
     }
     
-    #[inline]
-    pub fn total_spent(&self) -> i32 {
-	let n = self.game.number_of_players() as usize;
-	self.state_.spent.iter().take(n).fold(0, |sum, i| sum + *i)
-    }
-
-    #[inline]
-    pub fn current_spent(&self) -> i32 {
-	self.state_.spent[self.current_player() as usize]
-    }
-
     pub fn set_hole_cards(&mut self, player: u8, cards: &[Card]) -> Result<(), String> {
 	assert!(self.game.num_hole_cards() as usize == cards.len());
 	let mut fixed_size_cards: [Card; 3] = [0; 3];
