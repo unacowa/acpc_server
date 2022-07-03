@@ -3,7 +3,6 @@ use std::fs::File;
 use acpc_server::Game;
 use acpc_server::State;
 use acpc_server::Action;
-use acpc_server::ActionType;
 
 
 #[derive(Debug, Clone)]
@@ -18,7 +17,7 @@ impl<'a> Node<'a> {
 	let mut his: Vec<String> = vec![];
 	let mut node = self;
 	loop {
-	    his.push(format!("P{}|{}", node.player, node.action));
+	    his.push(format!("P{}|{:?}", node.player, node.action));
 	    match node.parent {
 		Some(a) => node = a,
 		None => break,
@@ -30,15 +29,15 @@ impl<'a> Node<'a> {
 
 fn legal_actions(state: &State) -> Vec<Action> {
     let actions = match state.get_round() {
-	0 => vec![Action::new(ActionType::Fold, 0),
-		  Action::new(ActionType::Call, 0),
-		  Action::new(ActionType::Raise, 2)],
-	1 => vec![Action::new(ActionType::Fold, 0),
-		  Action::new(ActionType::Call, 0),
-		  Action::new(ActionType::Raise, 4)],
+	0 => vec![Action::Fold,
+		  Action::Call,
+		  Action::Raise(2)],
+	1 => vec![Action::Fold,
+		  Action::Call,
+		  Action::Raise(4)],
 	_ => panic!("Invalid round {}", state.get_round())
     };
-    actions.into_iter().filter(|a| state.is_valid_action(&a)).collect::<Vec<_>>()
+    actions.into_iter().filter(|a| state.is_valid_action(*a)).collect::<Vec<_>>()
 }
 
 fn traverse(state: State, parent: Option<&Node>) {
@@ -59,7 +58,7 @@ fn traverse(state: State, parent: Option<&Node>) {
 	let node = Node { parent, player: state.current_player(),
 			  action: action.clone() };
 	let mut next_state = state.clone();
-	next_state.do_action(&action).unwrap();
+	next_state.do_action(action).unwrap();
 	traverse(next_state, Some(&node));
     }
 }

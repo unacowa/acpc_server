@@ -10,43 +10,29 @@ use std::fmt;
 
 pub type Card = u8;
 
-#[derive(Debug, Copy, Clone)]
-pub enum ActionType {
-    Fold = acpc::ActionType_a_fold as isize,
-    Call =  acpc::ActionType_a_call as isize,
-    Raise = acpc::ActionType_a_raise as isize,
-    Invalid = acpc::ActionType_a_invalid as isize,
+
+/// Available actions in a game.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Action {
+    /// Fold action.
+    Fold,
+
+    /// Call action.
+    Call,
+
+    /// Raise action with a specified amount.
+    Raise(i32),
+
+    /// Invalid
+    Invalid,
 }
 
-impl fmt::Display for ActionType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            ActionType::Fold => write!(f, "Fold"),
-            ActionType::Call => write!(f, "Call"),
-            ActionType::Raise => write!(f, "Raise"),
-            ActionType::Invalid => write!(f, "Invalid"),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Action( acpc::Action );
-
-impl Action {
-    pub fn new(type_: ActionType, size: i32) -> Action {
-	Action(acpc::Action {type_: type_ as u32, size})
-    }
-}
-
-impl fmt::Display for Action {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0.type_ {
-	    acpc::ActionType_a_fold => write!(f, "Fold"),
-	    acpc::ActionType_a_call => write!(f, "Call"),
-	    acpc::ActionType_a_raise => write!(f, "Raise({})", &self.0.size),
-	    acpc::ActionType_a_invalid => write!(f, "Invalid"),
-	    _ => write!(f, "Invalid"),
-	}
+fn to_acpc_action(action: &Action) -> acpc::Action {
+    match action {
+	Action::Fold => acpc::Action{type_: acpc::ActionType_a_fold, size: 0},
+	Action::Call => acpc::Action{type_: acpc::ActionType_a_call, size: 0},
+	Action::Raise(size) => acpc::Action{type_: acpc::ActionType_a_raise, size: *size},
+	Action::Invalid => acpc::Action{type_: acpc::ActionType_a_invalid, size: 0},
     }
 }
 
@@ -221,14 +207,14 @@ impl State {
 	}
     }
 
-    pub fn do_action(&mut self, action: &Action) -> Result<(), &str>{
-	let action_copy = action.clone();
+    pub fn do_action(&mut self, action: Action) -> Result<(), &str>{
 	if !self.is_valid_action(action) {
 	    return Err("Invalid Action");
 	}
+	let acpc_action = to_acpc_action(&action);
 	let state_ptr = &mut self.state_ as *mut acpc::State;
 	let game_ptr = &self.game.game_ as *const acpc::Game;
-	let action_ptr = &action_copy.0 as *const acpc::Action;
+	let action_ptr = &acpc_action as *const acpc::Action;
 	unsafe {
 	    acpc::doAction(game_ptr, action_ptr, state_ptr)
 	}
@@ -236,12 +222,12 @@ impl State {
     }
 
     #[inline]
-    pub fn is_valid_action(&self, action: &Action) -> bool {
-	let mut action_copy = action.clone();
+    pub fn is_valid_action(&self, action: Action) -> bool {
+	let mut acpc_action = to_acpc_action(&action);
 	let auto_fix_action_in_c = 0;
 	let state_ptr = &self.state_ as *const acpc::State;
 	let game_ptr = &self.game.game_ as *const acpc::Game;
-	let action_ptr = &mut action_copy.0 as *mut acpc::Action;
+	let action_ptr = &mut acpc_action as *mut acpc::Action;
 	let result = unsafe {
 	    acpc::isValidAction(game_ptr, state_ptr, auto_fix_action_in_c, action_ptr)
 	};
@@ -415,8 +401,8 @@ mod state_tests {
 	    if state.is_finished() {
 		return 
 	    }
-	    let action = Action::new(ActionType::Call, 0);
-	    state.do_action(&action).unwrap();
+	    let action = Action::Call;
+	    state.do_action(action).unwrap();
 	}
     }
 
@@ -444,19 +430,19 @@ mod state_tests {
 	assert_eq!(Ok(0), state.current_spent(2));
 
 	assert_eq!(Ok((200, 20000)), state.raise_size());
-	state.do_action(&Action::new(ActionType::Raise, 200)).unwrap();
+	state.do_action(Action::Raise(200)).unwrap();
 	assert_eq!(Ok(50), state.current_spent(0));
 	assert_eq!(Ok(100), state.current_spent(1));
 	assert_eq!(Ok(200), state.current_spent(2));
 
 	assert_eq!(Ok((300, 20000)), state.raise_size());
-	state.do_action(&Action::new(ActionType::Raise, 1000)).unwrap();
+	state.do_action(Action::Raise(1000)).unwrap();
 	assert_eq!(Ok(1000), state.current_spent(0));
 	assert_eq!(Ok(100), state.current_spent(1));
 	assert_eq!(Ok(200), state.current_spent(2));
 	
 	assert_eq!(Ok((1800, 20000)), state.raise_size());
-	state.do_action(&Action::new(ActionType::Raise, 20000)).unwrap();
+	state.do_action(Action::Raise(20000)).unwrap();
 	assert_eq!(Ok(1000), state.current_spent(0));
 	assert_eq!(Ok(20000), state.current_spent(1));
 	assert_eq!(Ok(200), state.current_spent(2));
@@ -466,7 +452,7 @@ mod state_tests {
     fn num_folded() {
 	let mut state = get_state();
 	assert_eq!(0, state.num_folded());
-	state.do_action(&Action::new(ActionType::Fold, 0)).unwrap();
+	state.do_action(Action::Fold).unwrap();
 	assert_eq!(1, state.num_folded());
     }
 
@@ -474,48 +460,48 @@ mod state_tests {
     fn current_player() {
 	let mut state = get_state();
 	assert_eq!(2, state.current_player());
-	state.do_action(&Action::new(ActionType::Fold, 0)).unwrap();
+	state.do_action(Action::Fold).unwrap();
 	assert_eq!(0, state.current_player());
-	state.do_action(&Action::new(ActionType::Raise, 200)).unwrap();
+	state.do_action(Action::Raise(200)).unwrap();
 	assert_eq!(1, state.current_player());
-	state.do_action(&Action::new(ActionType::Raise, 500)).unwrap();
+	state.do_action(Action::Raise(500)).unwrap();
 	assert_eq!(0, state.current_player());
     }
 
     #[test]
     fn is_valid_action() {
-	let a_fold = Action::new(ActionType::Fold, 0);
-	let a_call = Action::new(ActionType::Call, 0);
-	let a_raise_100 = Action::new(ActionType::Raise, 100);
-	let a_raise_1000 = Action::new(ActionType::Raise, 1000);
-	let a_raise_10000 = Action::new(ActionType::Raise, 10000);
-	let a_raise_20001 = Action::new(ActionType::Raise, 20001);
+	let a_fold = Action::Fold;
+	let a_call = Action::Call;
+	let a_raise_100 = Action::Raise(100);
+	let a_raise_1000 = Action::Raise(1000);
+	let a_raise_10000 = Action::Raise(10000);
+	let a_raise_20001 = Action::Raise(20001);
 
 	let mut state = get_state();
-	assert_eq!(true, state.is_valid_action(&a_fold));
-	assert_eq!(true, state.is_valid_action(&a_call));
-	assert_eq!(false, state.is_valid_action(&a_raise_100));
-	assert_eq!(true, state.is_valid_action(&a_raise_1000));
-	assert_eq!(true, state.is_valid_action(&a_raise_10000));
-	assert_eq!(false, state.is_valid_action(&a_raise_20001));
-
-	state.do_action(&a_raise_1000).unwrap();
-	assert_eq!(true, state.is_valid_action(&a_fold));
-	assert_eq!(true, state.is_valid_action(&a_call));
-	assert_eq!(false, state.is_valid_action(&a_raise_100));
-	assert_eq!(false, state.is_valid_action(&a_raise_1000));
-	assert_eq!(true, state.is_valid_action(&a_raise_10000));
-	assert_eq!(false, state.is_valid_action(&a_raise_20001));
+	assert_eq!(true, state.is_valid_action(Action::Fold));
+	assert_eq!(true, state.is_valid_action(Action::Call));
+	assert_eq!(false, state.is_valid_action(Action::Raise(100)));
+	assert_eq!(true, state.is_valid_action(Action::Raise(1000)));
+	assert_eq!(true, state.is_valid_action(Action::Raise(10000)));
+	assert_eq!(false, state.is_valid_action(Action::Raise(20001)));
+	
+	state.do_action(Action::Raise(1000)).unwrap();
+	assert_eq!(true, state.is_valid_action(Action::Fold));
+	assert_eq!(true, state.is_valid_action(Action::Call));
+	assert_eq!(false, state.is_valid_action(Action::Raise(100)));
+	assert_eq!(false, state.is_valid_action(Action::Raise(1000)));
+	assert_eq!(true, state.is_valid_action(Action::Raise(10000)));
+	assert_eq!(false, state.is_valid_action(Action::Raise(20001)));
     }
 
     #[test]
     fn money_and_ante() {
 	let mut state = get_state();
-	state.do_action(&Action::new(ActionType::Raise, 200)).unwrap(); // 2
-	state.do_action(&Action::new(ActionType::Raise, 1000)).unwrap(); // 0
-	state.do_action(&Action::new(ActionType::Call, 0)).unwrap(); // 1
-	state.do_action(&Action::new(ActionType::Call, 0)).unwrap(); // 2
-	state.do_action(&Action::new(ActionType::Raise, 2000)).unwrap(); // 0
+	state.do_action(Action::Raise(200)).unwrap(); // 2
+	state.do_action(Action::Raise(1000)).unwrap(); // 0
+	state.do_action(Action::Call).unwrap(); // 1
+	state.do_action(Action::Call).unwrap(); // 2
+	state.do_action(Action::Raise(2000)).unwrap(); // 0
 	assert_eq!(Ok(18000), state.money(0));
 	assert_eq!(Ok(19000), state.money(1));
 	assert_eq!(Ok(19000), state.money(2));
