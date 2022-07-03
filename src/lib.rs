@@ -160,8 +160,8 @@ impl State {
     }
 
     #[inline]
-    pub fn max_spend(&self) -> u32 {
-	self.state_.maxSpent as u32
+    pub fn max_spend(&self) -> i32 {
+	self.state_.maxSpent
     }
 
     #[inline]
