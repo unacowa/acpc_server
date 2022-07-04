@@ -12,7 +12,7 @@ pub type Card = u8;
 
 
 /// Available actions in a game.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Action {
     /// Fold action.
     Fold,
