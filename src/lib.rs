@@ -116,7 +116,7 @@ impl Game {
 
 #[derive(Debug, Clone)]
 pub struct State{
-    game: Game,
+    pub game: Game,
     state_: acpc::State,
 }
 
