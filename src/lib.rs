@@ -154,6 +154,11 @@ impl State {
     }
 
     #[inline]
+    pub fn player_folded(&self, player: u8) -> Result<bool, String> {
+	Ok(self.state_.playerFolded[self.game.player_idx(player)?] == 1)
+    }
+
+    #[inline]
     pub fn spents(&self) -> &[i32] {
 	let n = self.game.number_of_players() as usize;
 	&self.state_.spent[..n]
@@ -489,6 +494,21 @@ mod state_tests {
 	assert_eq!(1, state.current_player());
 	state.do_action(Action::Raise(500)).unwrap();
 	assert_eq!(0, state.current_player());
+    }
+
+    #[test]
+    fn player_folded() {
+	let mut state = get_state();
+	assert_eq!(2, state.current_player());
+	assert_eq!(false, state.player_folded(2).unwrap());
+	state.do_action(Action::Fold).unwrap();
+	assert_eq!(true, state.player_folded(2).unwrap());
+
+	assert_eq!(0, state.current_player());
+	assert_eq!(false, state.player_folded(0).unwrap());
+	state.do_action(Action::Fold).unwrap();
+	assert_eq!(true, state.player_folded(0).unwrap());
+	assert_eq!(false, state.player_folded(1).unwrap());
     }
 
     #[test]
