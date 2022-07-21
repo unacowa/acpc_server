@@ -339,7 +339,7 @@ impl State {
 
     #[inline]
     pub fn board_cards(&self) -> &[Card] {
-	let length = self.game.sum_board_cards(self.get_round()) as usize;
+	let length = self.state_.boardCards.iter().take_while(|&x| *x != NOT_DEALT).count();
 	&self.state_.boardCards[..length]
     }
 
