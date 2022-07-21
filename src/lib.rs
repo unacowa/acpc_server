@@ -9,7 +9,7 @@ use std::fmt;
 
 
 pub type Card = u8;
-
+const NOT_DEALT: u8 = 255;
 
 /// Available actions in a game.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -133,8 +133,8 @@ impl State {
 	    round: 0u8,
 	    finished: 0u8,
 	    playerFolded: [0u8; 10usize],
-	    boardCards: [255u8; 7usize],
-	    holeCards: [[255u8; 3usize]; 10usize],
+	    boardCards: [NOT_DEALT; 7usize],
+	    holeCards: [[NOT_DEALT; 3usize]; 10usize],
 	}
     }
     
@@ -330,7 +330,7 @@ impl State {
 
     pub fn set_board_cards(&mut self, cards: &[Card]) {
 	assert!(self.game.sum_board_cards(self.get_round()) as usize == cards.len());
-	let mut fixed_size_cards: [Card; 7] = [0; 7];
+	let mut fixed_size_cards: [Card; 7] = [NOT_DEALT; 7];
 	for (i, v) in cards.into_iter().enumerate() {
 	    fixed_size_cards[i] = *v;
 	}
