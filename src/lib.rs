@@ -329,7 +329,7 @@ impl State {
     }
 
     pub fn set_board_cards(&mut self, cards: &[Card]) {
-	assert!(self.game.sum_board_cards(self.get_round()) as usize == cards.len());
+	// assert!(self.game.sum_board_cards(self.get_round()) as usize == cards.len());
 	let mut fixed_size_cards: [Card; 7] = [NOT_DEALT; 7];
 	for (i, v) in cards.into_iter().enumerate() {
 	    fixed_size_cards[i] = *v;
@@ -596,6 +596,21 @@ mod state_tests {
 	assert_eq!(0, state.num_actions());
     }
 
+    #[test]
+    fn board_card() {
+	let mut state = get_state();
+	assert_eq!(0, state.board_cards().len());
+	let board = [17, 19, 23];
+	state.set_board_cards(&board);
+	assert_eq!(&board[..], state.board_cards());
+	let board = [17, 19, 23, 24];
+	state.set_board_cards(&board);
+	assert_eq!(&board[..], state.board_cards());
+	let board = [17, 19, 23, 24, 25];
+	state.set_board_cards(&board);
+	assert_eq!(&board[..], state.board_cards());
+    }
+    
     #[test]
     fn showdown() {
 	let hole_cards = [[1, 35], [5, 50], [11, 51]];
