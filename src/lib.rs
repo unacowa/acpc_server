@@ -133,8 +133,8 @@ impl State {
 	    round: 0u8,
 	    finished: 0u8,
 	    playerFolded: [0u8; 10usize],
-	    boardCards: [0u8; 7usize],
-	    holeCards: [[0u8; 3usize]; 10usize],
+	    boardCards: [255u8; 7usize],
+	    holeCards: [[255u8; 3usize]; 10usize],
 	}
     }
     
@@ -269,6 +269,15 @@ impl State {
 	}
     }
 
+    #[inline]
+    pub fn num_all_in(&self) -> u8 {
+	let state_ptr = &self.state_ as *const acpc::State;
+	let game_ptr = &self.game.game_ as *const acpc::Game;
+	unsafe {
+	    acpc::numAllIn(game_ptr, state_ptr)
+	}
+    }
+    
     #[inline]
     pub fn num_acting_player(&self) -> u8 {
 	let state_ptr = &self.state_ as *const acpc::State;
@@ -606,5 +615,49 @@ mod state_tests {
 	assert_eq!(Ok(50.0), state.value_of_state(1)); // tie
 	assert_eq!(Ok(50.0), state.value_of_state(2)); // tie
     }
+}
+
+#[cfg(test)]
+mod state_tests_2p {
+    use super::*;
+    use std::fs::File;
+
+    fn get_state() -> State {
+	let file = File::open("resources/holdem.nolimit.2p.reverse_blinds.game").unwrap();
+	let game = Game::read(file);
+	State::new(game)
+    }
     
+    #[test]
+    fn raise_count() {
+	let mut state = get_state();
+	state.do_action(Action::Raise(200)).unwrap(); // 1
+	state.do_action(Action::Raise(1000)).unwrap(); // 0
+	state.do_action(Action::Raise(2000)).unwrap(); // 1
+	state.do_action(Action::Call).unwrap(); // 0
+	
+	state.do_action(Action::Raise(6000)).unwrap(); // 1
+	state.do_action(Action::Raise(12000)).unwrap(); // 1
+    }
+
+    #[test]
+    fn is_finished() {
+	let mut state = get_state();
+	println!("stack: {:?}", state.game.game_.stack);
+	println!("blind: {:?}", state.game.game_.blind);
+	println!("raiseSize: {:?}", state.game.game_.raiseSize);
+	state.do_action(Action::Raise(20000)).unwrap(); // p1 All-in
+	state.do_action(Action::Fold).unwrap(); // p0 Fold
+	println!("allin {}", state.num_all_in());
+	println!("acting {}", state.num_acting_player());
+	assert_eq!(true, state.is_finished());
+
+	let mut state = get_state();
+	state.do_action(Action::Raise(20000)).unwrap(); // p1 All-in
+	println!("{:?}", state.raise_size());
+	state.do_action(Action::Call).unwrap(); // p0 Call
+	println!("allin {}", state.num_all_in());
+	println!("acting {}", state.num_acting_player());
+	assert_eq!(true, state.is_finished());
+    }
 }
